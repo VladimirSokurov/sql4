@@ -15,20 +15,21 @@ join albums a on t.album_id = a.id
 group by a.name;
 
 --все исполнители, которые не выпустили альбомы в 2020 году:
-select musician_id, m."name" from musicianalbums ma
-join albums a on ma.album_id = a.id 
-join musicians m on m.id = ma.musician_id  
-where a.year_ <> 2020
-group by musician_id, m."name";
+select distinct m.name from musicians m
+where m.name not in 
+(select distinct m.name from musicians m
+left join musicianalbums ma on m.id = ma.musician_id
+left join albums a on a.id = ma.album_id
+where a.year_ = 2020)
+order by m.name
 
 --названия сборников, в которых присутствует конкретный исполнитель (выберите сами):
-select c.name from collections c 
+select distinct c.name from collections c 
 join trackscollections tc on c.id = tc.collection_id 
 join tracks t on tc.track_id = t.id 
 join albums a on t.album_id = a.id 
 join musicianalbums ma on a.id = ma.album_id 
 where ma.musician_id = 3
-group by c.name
 order by c.name;
 
 --название альбомов, в которых присутствуют исполнители более 1 жанра:
@@ -47,7 +48,7 @@ left join trackscollections tc on t.id = tc.track_id
 where tc.track_id is null;
 
 --исполнителя(-ей), написавшего самый короткий по продолжительности трек (теоретически таких треков может быть несколько):
-select m.name, t.duration from tracks t
+select distinct m.name, t.duration from tracks t
 left join albums a on a.id = t.album_id
 left join musicianalbums ma on ma.album_id = a.id
 left join musicians m on m.id = ma.musician_id
@@ -56,14 +57,12 @@ having t.duration = (select min(duration) from tracks)
 order by m.name;
 
 --название альбомов, содержащих наименьшее количество треков:
-select distinct a.name from albums a
-left join tracks t on t.album_id = a.id
-where t.album_id in 
-	(select album_id from tracks
-    group by album_id
-    having count(id) = 
-    	(select count(id) from tracks
-        group by album_id
-        order by count
-        limit 1))
-order by a.name
+SELECT a.name, COUNT(t."name") FROM albums a
+JOIN tracks t ON a.id = t.album_id 
+GROUP BY a."name" 
+HAVING COUNT(t."name") = (  
+	SELECT COUNT(t."name") FROM albums a
+	JOIN tracks t ON a.id = t.album_id
+	GROUP BY a."name" 
+	ORDER BY COUNT(t."name")
+	LIMIT 1);
